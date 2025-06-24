@@ -1,6 +1,7 @@
 from enum import Enum
 import os
 from dataclasses import dataclass
+import json
 
 
 class Prioridad(Enum):
@@ -18,6 +19,14 @@ class Tarea:
     def __str__(self):
         estado: str = "✓" if self.completada else "✗"
         return f"{self.nombre} {estado}"
+    
+    def to_dict(self):
+        return {
+            "nombre": self.nombre,
+            "prioridad": self.prioridad.value,
+            "completada": self.completada
+        }
+
 
 
 tareas_por_nombre: dict[str, Tarea] = {}
@@ -85,7 +94,30 @@ def limpiar_pantalla() -> None:
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
+def guardar_tareas() -> None:
+    with open("tareas.json", "w") as archivo:
+        json.dump([tarea.to_dict() for tarea in tareas_por_nombre.values()], archivo, indent=4)
+
+
+def cargar_tareas() -> None:
+    global tareas_por_nombre, tareas_por_prioridad
+    try:
+        with open("tareas.json", "r") as archivo:
+            tareas_data = json.load(archivo)
+            for tarea_data in tareas_data:
+                tarea = Tarea(tarea_data["nombre"], Prioridad(tarea_data["prioridad"]), tarea_data["completada"])
+                tareas_por_nombre[tarea.nombre] = tarea
+                tareas_por_prioridad[tarea.prioridad].append(tarea)
+    except FileNotFoundError:
+        print("No se encontraron tareas guardadas.")
+    except json.JSONDecodeError:
+        print("Error al leer el archivo de tareas. Asegúrese de que el formato sea correcto.")
+
+
 def main() -> None:
+    if os.path.exists("tareas.json"):
+        cargar_tareas()
+    
     while True:
         print("\nLista de Tareas")
         print("1. Agregar tarea")
@@ -113,6 +145,8 @@ def main() -> None:
             break
         else:
             print("Opción no válida. Intente nuevamente.")
+        
+        guardar_tareas()
         input("Presione Enter para continuar...")
         limpiar_pantalla()
 
